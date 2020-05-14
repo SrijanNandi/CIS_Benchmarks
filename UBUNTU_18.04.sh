@@ -117,12 +117,12 @@ set_grubpassword
 
 ##############################################################################################################
 
-# Ensure chargen, daytime, discard, echo, time, rsh, talk, telnet, tftp, xinetd, Ubuntu-Desktop, Avahi, rsync, cups, DHCPD, LDAP Server, LDAP Client, RPC, NFS, SNMP, FTP are disabled and removed
+# Ensure echoping, time, rsh, talk, telnet, tftp, xinetd, Ubuntu-Desktop, Avahi, rsync, cups, DHCPD, LDAP Server, LDAP Client, RPC, NFS, SNMP, FTP are disabled and removed
 
 remove_unwanted_modules() {
-apt-get -y remove --purge chargen daytime discard echo time rsh talk telnet tftp xinetd xserver-xorg-core 'x11-*' ubuntu-desktop unity gnome-shell lightdm avahi avahi-daemon avahi rsync cpus isc-dhcp-server ldap-utils ldap-auth-client rpcbind cipux-rpc-tools rpcbind nfs-kernel-server nfs-kernel-server nfs-common portmap snmp vsftpd ftp 2>&1 >/dev/null
+apt-get -y remove --purge echoping time rsh-* talk telnet tftp xinetd xserver-xorg-core 'x11-*' ubuntu-desktop unity gnome-shell lightdm avahi-* rsync cups cups-* isc-dhcp-server ldap-utils ldap-auth-client rpcbind cipux-rpc-tools rpcbind nfs-kernel-server nfs-kernel-server nfs-common portmap snmp vsftpd ftp 2>&1 >/dev/null
 
-apt-get -y autoremove 2>&1 >/dev/null && apt-get -y clean 2>&1 >/dev/null
+apt-get -y autoremove 2>&1 >/dev/null && apt-get -y autoclean 2>&1 >/dev/null
 }
 
 remove_unwanted_modules
@@ -275,7 +275,7 @@ fi
 OUTPUT=`systemctl status firewalld 2>&1`
 
 if [[ $OUTPUT = "Unit firewalld.service could not be found." ]]; then
-    echo "firewalld is 	not INSTALLED"
+    echo "firewalld is not INSTALLED"
 else
     systemctl stop firewalld 2>&1 >/dev/null
     apt-get -y remove --purge firewalld 2>&1 >/dev/null
@@ -286,56 +286,25 @@ iptables_rules() {
 # Flush Iptables rules
 iptables -F
 
-# Ensure loopback traffic is configured in OUTPUT Chain
-iptables -A OUTPUT -o lo -j ACCEPT
+# Discard outbound invalid Packets
+iptables -A OUTPUT -m state --state INVALID -j DROP
 
 # Ensure established outbound connections are configured
 iptables -A OUTPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
-# Discard outbound invalid Packets
-iptables -A OUTPUT -m state --state INVALID -j DROP
-
-# Ensure established forwarded connections are configured
-iptables -A FORWARD -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+# Ensure loopback traffic is configured in OUTPUT Chain
+iptables -A OUTPUT -o lo -j ACCEPT
 
 # Discard forward invalid Packets
 iptables -A FORWARD -m state --state INVALID -j DROP
 
-# Ensure loopback traffic is configured
-iptables -A INPUT -i lo -j ACCEPT
-
-# Open inbound ssh connections
-iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -j ACCEPT
-iptables -A INPUT -p tcp --dport 2224 -m conntrack --ctstate NEW -j ACCEPT
-
-# Ensure outbound and established connections are configured
-iptables -A INPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-# Limit ICMP Connections
-iptables -A INPUT -p icmp -m limit --limit 1/second -j ACCEPT
-
-# Discard inbound invalid Packets
-iptables -A INPUT -m state --state INVALID -j DROP
-
-# Stop Masked Attackes
-iptables -A INPUT -p icmp --icmp-type 13 -j DROP
-iptables -A INPUT -p icmp --icmp-type 17 -j DROP
-iptables -A INPUT -p icmp --icmp-type 14 -j DROP
-
-# Drop Spoofing attacks
-iptables -A INPUT -s 224.0.0.0/4 -j DROP
-iptables -A INPUT -d 224.0.0.0/4 -j DROP
-iptables -A INPUT -s 240.0.0.0/5 -j DROP
-iptables -A INPUT -d 240.0.0.0/5 -j DROP
-iptables -A INPUT -s 0.0.0.0/8 -j DROP
-iptables -A INPUT -d 0.0.0.0/8 -j DROP
-iptables -A INPUT -d 239.255.255.0/24 -j DROP
-iptables -A INPUT -d 255.255.255.255 -j DROP
+# Ensure established forwarded connections are configured
+iptables -A FORWARD -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
 # Stop PING of Death attack
 iptables -N PING_OF_DEATH
-iptables -A PING_OF_DEATH -p icmp --icmp-type echo-request -m hashlimit --hashlimit 1/s --hashlimit-burst 10 --hashlimit-htable-expire 300000 --hashlimit-mode srcip --hashlimit-name t_PING_OF_DEATH -j RETURN
 iptables -A PING_OF_DEATH -j DROP
+iptables -A PING_OF_DEATH -p icmp --icmp-type echo-request -m hashlimit --hashlimit 1/s --hashlimit-burst 10 --hashlimit-htable-expire 300000 --hashlimit-mode srcip --hashlimit-name t_PING_OF_DEATH -j RETURN
 iptables -A INPUT -p icmp --icmp-type echo-request -j PING_OF_DEATH
 
 # Stop port scanning, SYN flood attacks, invalid packets, malformed XMAS packets, NULL packets, etc.
@@ -351,9 +320,42 @@ iptables -A PORTSCAN -p tcp --tcp-flags ALL NONE -j DROP
 iptables -A PORTSCAN -p tcp --tcp-flags ALL FIN,PSH,URG -j DROP
 iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP
 iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
+iptables -A INPUT -p tcp -j PORTSCAN
+
+# Invalid Traffic
 iptables -A INPUT -f -j DROP
 iptables -A INPUT -p tcp ! --syn -m conntrack --ctstate NEW -j DROP
-iptables -A INPUT -p tcp -j PORTSCAN
+
+# Drop Spoofing attacks
+iptables -A INPUT -s 224.0.0.0/4 -j DROP
+iptables -A INPUT -d 224.0.0.0/4 -j DROP
+iptables -A INPUT -s 240.0.0.0/5 -j DROP
+iptables -A INPUT -d 240.0.0.0/5 -j DROP
+iptables -A INPUT -s 0.0.0.0/8 -j DROP
+iptables -A INPUT -d 0.0.0.0/8 -j DROP
+iptables -A INPUT -d 239.255.255.0/24 -j DROP
+iptables -A INPUT -d 255.255.255.255 -j DROP
+
+# Stop Masked Attackes
+iptables -A INPUT -p icmp --icmp-type 13 -j DROP
+iptables -A INPUT -p icmp --icmp-type 17 -j DROP
+iptables -A INPUT -p icmp --icmp-type 14 -j DROP
+
+# Discard inbound invalid Packets
+iptables -A INPUT -m state --state INVALID -j DROP
+
+# Ensure outbound and established connections are configured
+iptables -A INPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+# Ensure loopback traffic is configured
+iptables -A INPUT -i lo -j ACCEPT
+
+# Limit ICMP Connections
+iptables -A INPUT -p icmp -m limit --limit 1/second -j ACCEPT
+
+# Open inbound ssh connections
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A INPUT -p tcp --dport 2224 -m conntrack --ctstate NEW -j ACCEPT
 
 # Default deny Firewall policy
 iptables -P INPUT DROP
@@ -387,10 +389,174 @@ uncommon_netprotocols() {
    echo "install sctp /bin/true" >> /etc/modprobe.d/CIS.conf
    echo "install rds /bin/true" >> /etc/modprobe.d/CIS.conf
    echo "install tipc /bin/true" >> /etc/modprobe.d/CIS.conf
-   echo " OK"
+   echo "OK"
 }
 
 uncommon_netprotocols
+
+##############################################################################################################
+
+# SSH Server Configuration and hardening
+
+OUTPUT=`stat /etc/ssh/sshd_config`
+OUTPUT_1=`stat /etc/ssh/sshd_config | sed -n '4p' | awk '{print $3,$6}' | sed 's/)//g'`
+OUTPUT_2=`stat /etc/ssh/sshd_config | sed -n '4p' | awk '{print $7,$10}' | sed 's/)//g'`
+
+if [[ $OUTPUT_1 = "Uid: root"  ]] && [[ $OUTPUT_2 = "Gid: root"  ]]; then
+    echo "SSHD Permissions are set.............OK"
+else
+    echo "$OUTPUT"
+    chown root:root /etc/ssh/sshd_config
+    chmod og-rwx /etc/ssh/sshd_config
+fi
+
+OUTPUT=`sshd -T | grep -Ei '^\s*protocol\s+(1|1\s*,\s*2|2\s*,\s*1)\s*'`
+
+if [[ $? -eq 0 ]]; then
+    echo "SSH Protocol is set to v2.................OK"
+else
+    usermod -g 0 root
+fi
+
+echo ""
+echo -n " Do you want to set SSH Port to 2224? (y/n): " ; read ssh_port_answer
+    if [ "$ssh_port_answer" == "y" ]; then
+        sed -i 's/#Port 22/Port 2224/' /etc/ssh/sshd_config
+    fi
+
+sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/' /etc/ssh/sshd_config
+
+OUTPUT=`sshd -T | grep loglevel | awk '{print $2}'`
+
+if [[ $OUTPUT = "INFO" ]] || [[ $OUTPUT = "VERBOSE" ]]; then
+    echo "LogLevel is appropriate..................OK"
+else
+    sed -i 's/#LogLevel INFO/LogLevel INFO/' /etc/ssh/sshd_config
+fi
+
+OUTPUT=`sshd -T | grep x11forwarding | awk '{print $2}'`
+OUTPUT_1=`sed -n '/X11Forwarding/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "no" ]]; then
+    echo "SSH X11 forwarding is disabled..................OK"
+else
+    if [[ $OUTPUT_1 = "X11Forwarding yes" ]]; then
+        sed -i 's/X11Forwarding yes/X11Forwarding no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT_1 = "#X11Forwarding yes" ]]; then
+        sed -i 's/#X11Forwarding yes/X11Forwarding no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT_1 = "#X11Forwarding no" ]]; then
+        sed -i 's/#X11Forwarding no/X11Forwarding no/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sshd -T | grep maxauthtries | awk '{print $2}'`
+INT="4"
+
+if [ "$OUTPUT" -le "$INT" ]; then
+    echo "SSH MaxAuthTries is set to 4 or less..................OK"
+else
+    sed -i "s/$OUTPUT/4/g" /etc/ssh/sshd_config
+fi
+
+OUTPUT=`sshd -T | grep ignorerhosts | awk '{print $2}'`
+OUTPUT_1=`sed -n '/IgnoreRhosts/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "yes" ]]; then
+    echo "SSH IgnoreRhosts is enabled..................OK"
+else
+    if [[ $OUTPUT_1 = "IgnoreRhosts no" ]]; then
+        sed -i 's/IgnoreRhosts no/IgnoreRhosts yes/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT_1 = "#IgnoreRhosts no" ]]; then
+        sed -i 's/#IgnoreRhosts no/IgnoreRhosts yes/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT_1 = "#IgnoreRhosts yes" ]]; then
+        sed -i 's/#IgnoreRhosts yes/IgnoreRhosts yes/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sshd -T | grep hostbasedauthentication | awk '{print $2}'`
+OUTPUT_1=`sed -n '/HostbasedAuthentication/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "no" ]]; then
+    echo "SSH HostbasedAuthentication is disabled..................OK"
+else
+    if [[ $OUTPUT_1 = "HostbasedAuthentication yes" ]]; then
+        sed -i 's/HostbasedAuthentication yes/HostbasedAuthentication no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT_1 = "#HostbasedAuthentication no" ]]; then
+        sed -i 's/#HostbasedAuthentication no/HostbasedAuthentication no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT_1 = "#HostbasedAuthentication yes" ]]; then
+        sed -i 's/#HostbasedAuthentication yes/HostbasedAuthentication no/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sed -n '/PermitRootLogin/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "PermitRootLogin no" ]]; then
+    echo "SSH root login is disabled..................OK"
+else
+    if [[ $OUTPUT = "PermitRootLogin yes" ]]; then
+        sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitRootLogin no" ]]; then
+        sed -i 's/#PermitRootLogin no/PermitRootLogin no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitRootLogin yes" ]]; then
+        sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sed -n '/PermitEmptyPasswords/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "PermitEmptyPasswords no" ]]; then
+    echo "SSH PermitEmptyPasswords is disabled..................OK"
+else
+    if [[ $OUTPUT = "PermitEmptyPasswords yes" ]]; then
+        sed -i 's/PermitEmptyPasswords yes/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitEmptyPasswords no" ]]; then
+        sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitEmptyPasswords yes" ]]; then
+        sed -i 's/#PermitEmptyPasswords yes/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sed -n '/PermitUserEnvironment/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "PermitUserEnvironment no" ]]; then
+    echo "SSH PermitUserEnvironment is disabled..................OK"
+else
+    if [[ $OUTPUT = "PermitUserEnvironment yes" ]]; then
+        sed -i 's/PermitUserEnvironment yes/PermitUserEnvironment no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitUserEnvironment no" ]]; then
+        sed -i 's/#PermitUserEnvironment no/PermitUserEnvironment no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitUserEnvironment yes" ]]; then
+        sed -i 's/#PermitUserEnvironment yes/PermitUserEnvironment no/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sed -n '/UsePAM/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "UsePAM yes" ]]; then
+    echo "SSH PAM is enabled..................OK"
+else
+    if [[ $OUTPUT = "UsePAM no" ]]; then
+        sed -i 's/UsePAM no/UsePAM yes/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#UsePAM no" ]]; then
+        sed -i 's/#UsePAM no/UsePAM yes/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#UsePAM yes" ]]; then
+        sed -i 's/#UsePAM yes/UsePAM yes/' /etc/ssh/sshd_config
+    fi
+fi
+
+OUTPUT=`sed -n '/AllowTcpForwarding/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "AllowTcpForwarding yes" ]]; then
+    echo "SSH AllowTcpForwarding is disabled..................OK"
+else
+    if [[ $OUTPUT = "AllowTcpForwarding no" ]]; then
+        sed -i 's/AllowTcpForwarding no/AllowTcpForwarding yes/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#AllowTcpForwarding no" ]]; then
+        sed -i 's/#AllowTcpForwarding no/AllowTcpForwarding yes/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#AllowTcpForwarding yes" ]]; then
+        sed -i 's/#AllowTcpForwarding yes/AllowTcpForwarding yes/' /etc/ssh/sshd_config
+    fi
+fi
 
 ##############################################################################################################
 
