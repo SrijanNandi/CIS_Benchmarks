@@ -287,7 +287,7 @@ iptables_rules() {
 iptables -F
 
 # Discard outbound invalid Packets
-iptables -A OUTPUT -m state --state INVALID -j DROP
+iptables -A OUTPUT -m conntrack --ctstate INVALID -j DROP
 
 # Ensure established outbound connections are configured
 iptables -A OUTPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
@@ -296,7 +296,7 @@ iptables -A OUTPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
 
 # Discard forward invalid Packets
-iptables -A FORWARD -m state --state INVALID -j DROP
+iptables -A FORWARD -m conntrack --ctstate INVALID -j DROP
 
 # Ensure established forwarded connections are configured
 iptables -A FORWARD -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
