@@ -290,7 +290,7 @@ iptables -F
 iptables -A OUTPUT -m conntrack --ctstate INVALID -j DROP
 
 # Ensure established outbound connections are configured
-iptables -A OUTPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
 
 # Ensure loopback traffic is configured in OUTPUT Chain
 iptables -A OUTPUT -o lo -j ACCEPT
@@ -299,7 +299,7 @@ iptables -A OUTPUT -o lo -j ACCEPT
 iptables -A FORWARD -m conntrack --ctstate INVALID -j DROP
 
 # Ensure established forwarded connections are configured
-iptables -A FORWARD -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
 
 # Stop PING of Death attack
 iptables -N PING_OF_DEATH
