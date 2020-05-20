@@ -320,11 +320,11 @@ iptables -A PORTSCAN -p tcp --tcp-flags ALL NONE -j DROP
 iptables -A PORTSCAN -p tcp --tcp-flags ALL FIN,PSH,URG -j DROP
 iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP
 iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
+iptables -A PORTSCAN -p tcp ! --syn -m conntrack --ctstate NEW -j DROP
 iptables -A INPUT -p tcp -j PORTSCAN
 
 # Invalid Traffic
 iptables -A INPUT -f -j DROP
-iptables -A INPUT -p tcp ! --syn -m conntrack --ctstate NEW -j DROP
 
 # Drop Spoofing attacks
 iptables -A INPUT -s 224.0.0.0/4 -j DROP
