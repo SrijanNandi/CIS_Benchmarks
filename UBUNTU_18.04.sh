@@ -345,7 +345,7 @@ iptables -A INPUT -p icmp --icmp-type 14 -j DROP
 iptables -A INPUT -m state --state INVALID -j DROP
 
 # Ensure outbound and established connections are configured
-iptables -A INPUT -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
 # Ensure loopback traffic is configured
 iptables -A INPUT -i lo -j ACCEPT
