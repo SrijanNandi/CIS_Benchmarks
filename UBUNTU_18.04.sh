@@ -447,6 +447,19 @@ else
     elif [[ $OUTPUT_1 = "#X11Forwarding no" ]]; then
         sed -i 's/#X11Forwarding no/X11Forwarding no/' /etc/ssh/sshd_config
     fi
+OUTPUT=`sed -n '/PermitEmptyPasswords/p' /etc/ssh/sshd_config | sed -n '1p'`M
+
+if [[ $OUTPUT = "PermitEmptyPasswords no" ]]; then
+    echo "SSH PermitEmptyPasswords is disabled..................OK"
+else
+    if [[ $OUTPUT = "PermitEmptyPasswords yes" ]]; then
+        sed -i 's/PermitEmptyPasswords yes/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitEmptyPasswords no" ]]; then
+        sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PermitEmptyPasswords yes" ]]; then
+        sed -i 's/#PermitEmptyPasswords yes/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    fi
+fi
 fi
 
 OUTPUT=`sshd -T | grep maxauthtries | awk '{print $2}'`
@@ -502,6 +515,20 @@ else
     fi
 fi
 
+
+OUTPUT=`sed -n '/PasswordAuthentication/p' /etc/ssh/sshd_config | sed -n '1p'`
+
+if [[ $OUTPUT = "PasswordAuthentication no" ]]; then
+    echo "SSH PasswordAuthentication is disabled..................OK"
+else
+    if [[ $OUTPUT = "PasswordAuthentication yes" ]]; then
+        sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PasswordAuthentication no" ]]; then
+        sed -i 's/#PasswordAuthentication no/PasswordAuthentication no/' /etc/ssh/sshd_config
+    elif [[ $OUTPUT = "#PasswordAuthentication yes" ]]; then
+        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+    fi
+fi
 OUTPUT=`sed -n '/PermitEmptyPasswords/p' /etc/ssh/sshd_config | sed -n '1p'`
 
 if [[ $OUTPUT = "PermitEmptyPasswords no" ]]; then
@@ -532,15 +559,15 @@ fi
 
 OUTPUT=`sed -n '/UsePAM/p' /etc/ssh/sshd_config | sed -n '1p'`
 
-if [[ $OUTPUT = "UsePAM yes" ]]; then
-    echo "SSH PAM is enabled..................OK"
+if [[ $OUTPUT = "UsePAM no" ]]; then
+    echo "SSH PAM is disabled..................OK"
 else
-    if [[ $OUTPUT = "UsePAM no" ]]; then
-        sed -i 's/UsePAM no/UsePAM yes/' /etc/ssh/sshd_config
+    if [[ $OUTPUT = "UsePAM yes" ]]; then
+        sed -i 's/UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
     elif [[ $OUTPUT = "#UsePAM no" ]]; then
-        sed -i 's/#UsePAM no/UsePAM yes/' /etc/ssh/sshd_config
+        sed -i 's/#UsePAM no/UsePAM no/' /etc/ssh/sshd_config
     elif [[ $OUTPUT = "#UsePAM yes" ]]; then
-        sed -i 's/#UsePAM yes/UsePAM yes/' /etc/ssh/sshd_config
+        sed -i 's/#UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
     fi
 fi
 
