@@ -573,15 +573,15 @@ fi
 
 OUTPUT=`sed -n '/AllowTcpForwarding/p' /etc/ssh/sshd_config | sed -n '1p'`
 
-if [[ $OUTPUT = "AllowTcpForwarding yes" ]]; then
+if [[ $OUTPUT = "AllowTcpForwarding no" ]]; then
     echo "SSH AllowTcpForwarding is disabled..................OK"
 else
-    if [[ $OUTPUT = "AllowTcpForwarding no" ]]; then
-        sed -i 's/AllowTcpForwarding no/AllowTcpForwarding yes/' /etc/ssh/sshd_config
+    if [[ $OUTPUT = "AllowTcpForwarding yes" ]]; then
+        sed -i 's/AllowTcpForwarding yes/AllowTcpForwarding no/' /etc/ssh/sshd_config
     elif [[ $OUTPUT = "#AllowTcpForwarding no" ]]; then
-        sed -i 's/#AllowTcpForwarding no/AllowTcpForwarding yes/' /etc/ssh/sshd_config
+        sed -i 's/#AllowTcpForwarding no/AllowTcpForwarding no/' /etc/ssh/sshd_config
     elif [[ $OUTPUT = "#AllowTcpForwarding yes" ]]; then
-        sed -i 's/#AllowTcpForwarding yes/AllowTcpForwarding yes/' /etc/ssh/sshd_config
+        sed -i 's/#AllowTcpForwarding yes/AllowTcpForwarding no/' /etc/ssh/sshd_config
     fi
 fi
 
