@@ -354,8 +354,8 @@ iptables -A INPUT -i lo -j ACCEPT
 iptables -A INPUT -p icmp -m limit --limit 1/second -j ACCEPT
 
 # Open inbound ssh connections
-iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -j ACCEPT
-iptables -A INPUT -p tcp --dport 2224 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A INPUT -p tcp -s 14.102.160.178 --dport 22 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A INPUT -p tcp -s 14.102.160.178 --dport 2224 -m conntrack --ctstate NEW -j ACCEPT
 
 # Default deny Firewall policy
 iptables -P INPUT DROP
